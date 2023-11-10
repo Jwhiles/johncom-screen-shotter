@@ -67,7 +67,7 @@ jobs:
         git pull --rebase
         git push
     - name: Upload Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: screenshot
         path: shot.png
@@ -84,7 +84,7 @@ jobs:
         run: npm install -g wrangler
 
       - name: Download Artifact
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: screenshot
 
