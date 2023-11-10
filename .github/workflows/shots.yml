@@ -62,3 +62,24 @@ jobs:
         git commit -m "${timestamp}" || exit 0
         git pull --rebase
         git push
+  archive:
+    needs: shot-scraper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+      - id: install-aws-cli
+        uses: unfor19/install-aws-cli-action@v1
+      - name: website-archive
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
+          aws_s3_bucket: ${{ secrets.AWS_BUCKET }}
+          DESTINATION_DIR: test-${{ steps.date.outputs.date }}.png
+          AWS_DEFAULT_REGION: eu-west-2
+          AWS_DEFAULT_OUTPUT: json
+        run: |
+          aws s3 cp ./shot.png s3://$aws_s3_bucket/$DESTINATION_DIR
