@@ -55,8 +55,16 @@ jobs:
     - name: Take shots
       run: |
         shot-scraper multi shots.yml
-    # Maybe remove this step. I'm pushing th screenshots to S3 anyway
-    # so it doesn't really matter if they are archived in the repo
+
+    - name: Get current date
+      id: date
+      run: echo "date=$(date +'%Y-%m-%d')"  >> $GITHUB_OUTPUT
+    - name: rename screenshot
+      env:
+        FILE_NAME: ${{ steps.date.outputs.date }}.png
+      run: |-
+        mv shot.png $FILE_NAME
+
     - name: Commit and push
       run: |-
         git config user.name "Automated"
@@ -66,36 +74,36 @@ jobs:
         git commit -m "${timestamp}" || exit 0
         git pull --rebase
         git push
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: screenshot
-        path: shot.png
-  wrangler:
-    needs: shot-scraper
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+    # - name: Upload Artifact
+    #   uses: actions/upload-artifact@v3
+    #   with:
+    #     name: screenshot
+    #     path: shot.png
+  # wrangler:
+  #   needs: shot-scraper
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Set up Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
 
-      - name: Install Wrangler
-        run: npm install -g wrangler
+  #     - name: Install Wrangler
+  #       run: npm install -g wrangler
 
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: screenshot
+  #     - name: Download Artifact
+  #       uses: actions/download-artifact@v3
+  #       with:
+  #         name: screenshot
 
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')"  >> $GITHUB_OUTPUT
+  #     - name: Get current date
+  #       id: date
+  #       run: echo "date=$(date +'%Y-%m-%d')"  >> $GITHUB_OUTPUT
 
-      - name: Execute Wrangler Command
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          DESTINATION_DIR: test-${{ steps.date.outputs.date }}.png
-          BUCKET_NAME: ${{ secrets.R2_BUCKET }}
-        run: npx wrangler r2 object put $BUCKET_NAME/$DESTINATION_DIR --file ./shot.png
+  #     - name: Execute Wrangler Command
+  #       env:
+  #         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  #         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  #         DESTINATION_DIR: test-${{ steps.date.outputs.date }}.png
+  #         BUCKET_NAME: ${{ secrets.R2_BUCKET }}
+  #       run: npx wrangler r2 object put $BUCKET_NAME/$DESTINATION_DIR --file ./shot.png
