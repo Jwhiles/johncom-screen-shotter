@@ -56,22 +56,37 @@ jobs:
       run: |
         shot-scraper multi shots.yml
 
+    - name: Check if screenshot changed
+      id: check
+      run: |
+        latest=$(ls *.png 2>/dev/null | sort | tail -1)
+        if [ -n "$latest" ] && cmp -s shot.png "$latest"; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+          echo "Screenshot identical to $latest, skipping"
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+        fi
+
     - name: Upload Artifact
+      if: steps.check.outputs.changed == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: screenshot
         path: shot.png
 
     - name: Get current date
+      if: steps.check.outputs.changed == 'true'
       id: date
       run: echo "date=$(date +'%Y-%m-%d')"  >> $GITHUB_OUTPUT
     - name: rename screenshot
+      if: steps.check.outputs.changed == 'true'
       env:
         FILE_NAME: ${{ steps.date.outputs.date }}.png
       run: |-
         mv shot.png $FILE_NAME
 
     - name: Commit and push
+      if: steps.check.outputs.changed == 'true'
       run: |-
         git config user.name "Automated"
         git config user.email "actions@users.noreply.github.com"
@@ -80,31 +95,3 @@ jobs:
         git commit -m "${timestamp}" || exit 0
         git pull --rebase
         git push
-  wrangler:
-    needs: shot-scraper
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Wrangler
-        run: npm install -g wrangler
-
-      - name: Download Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: screenshot
-
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')"  >> $GITHUB_OUTPUT
-
-      - name: Execute Wrangler Command
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          DESTINATION_DIR: test-${{ steps.date.outputs.date }}.png
-          BUCKET_NAME: ${{ secrets.R2_BUCKET }}
-        run: npx wrangler r2 object put $BUCKET_NAME/$DESTINATION_DIR --file ./shot.png
